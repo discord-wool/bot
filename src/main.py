@@ -4,33 +4,42 @@ import asyncio
 from discord.ext import commands
 from dotenv import load_dotenv
 
+# .envファイルから環境変数を読み込む（ローカル用）
 load_dotenv()
 
 class MyBot(commands.Bot):
     def __init__(self):
+        # プレフィックスと権限の設定
         intents = discord.Intents.default()
-        intents.message_content = True  # メッセージ内容を読み取るために必須
+        intents.message_content = True 
         
-        # プレフィックスをリストで指定
         super().__init__(
             command_prefix=["!", ">>"], 
             intents=intents,
-            help_command=None # デフォルトのhelpを無効化する場合
+            help_command=None
         )
 
-    # src/main.py の setup_hook 内を修正
     async def setup_hook(self):
-        # Cogのロード
+        # Cog (commands と events) をロード
         for folder in ['commands', 'events']:
-            for filename in os.listdir(f'./src/{folder}'):
-                if filename.endswith('.py'):
-                    await self.load_extension(f'src.{folder}.{filename[:-3]}')
+            folder_path = f'./src/{folder}'
+            # フォルダが存在するか確認
+            if not os.path.exists(folder_path):
+                continue
+
+            for filename in os.listdir(folder_path):
+                if filename.endswith('.py') and not filename.startswith('__'):
+                    # src.commands.filename の形式でロード
+                    extension = f'src.{folder}.{filename[:-3]}'
+                    try:
+                        await self.load_extension(extension)
+                        print(f'Loaded extension: {extension}')
+                    except Exception as e:
+                        print(f'Failed to load extension {extension}. Error: {e}')
         
-        # スラッシュコマンドをDiscordに送信（同期）
-        # ※開発時は起動のたびに実行してOKですが、本番では回数制限に注意
+        # スラッシュコマンド（ユーザーインストール型含む）を同期
         await self.tree.sync()
-        print("Slash commands synced.")
-                    await self.load_extension(extension)
+        print("Slash commands synced globally.")
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
@@ -38,8 +47,12 @@ class MyBot(commands.Bot):
 async def main():
     bot = MyBot()
     async with bot:
+        # Renderの環境変数（Environment Variables）から取得
         token = os.getenv('DISCORD_TOKEN')
-        await bot.start(token)
+        if token:
+            await bot.start(token)
+        else:
+            print("Error: DISCORD_TOKEN not found.")
 
 if __name__ == "__main__":
     asyncio.run(main())
