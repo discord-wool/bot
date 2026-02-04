@@ -18,13 +18,18 @@ class MyBot(commands.Bot):
             help_command=None # デフォルトのhelpを無効化する場合
         )
 
+    # src/main.py の setup_hook 内を修正
     async def setup_hook(self):
-        # フォルダ内のファイルを読み込む
-        # 読み込み時のパス指定を 'src.folder.file' の形式に合わせる
+        # Cogのロード
         for folder in ['commands', 'events']:
             for filename in os.listdir(f'./src/{folder}'):
-                if filename.endswith('.py') and not filename.startswith('__'):
-                    extension = f'src.{folder}.{filename[:-3]}'
+                if filename.endswith('.py'):
+                    await self.load_extension(f'src.{folder}.{filename[:-3]}')
+        
+        # スラッシュコマンドをDiscordに送信（同期）
+        # ※開発時は起動のたびに実行してOKですが、本番では回数制限に注意
+        await self.tree.sync()
+        print("Slash commands synced.")
                     await self.load_extension(extension)
 
     async def on_ready(self):
